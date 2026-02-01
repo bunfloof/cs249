@@ -8,6 +8,10 @@ import dslabs.framework.Result;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
+// additional imports by me
+import dslabs.atmostonce.AMOCommand;
+import dslabs.atmostonce.AMOResult;
+
 /**
  * Simple client that sends requests to a single server and returns responses.
  *
@@ -21,7 +25,7 @@ class SimpleClient extends Node implements Client {
   // Your code here...
   // Java likes to be verbose with private
   private int sequenceNum; // pretend that this is a signed int32 that starts at 0 by default
-  private Command command; // pretend this is Option<Command> but Java lets this blow up with NullPointerException 
+  private AMOCommand amoCommand; // pretend this is Option<Command> but Java lets this blow up with NullPointerException 
   private Result result; // pretend this is Option<Result> but Java lets this blow up with NullPointerException
 
   /* -----------------------------------------------------------------------------------------------
@@ -44,10 +48,10 @@ class SimpleClient extends Node implements Client {
   public synchronized void sendCommand(Command command) {
     // Your code here...
     sequenceNum++; // new request, so increment sequence number
-    this.command = command; // store the command, this.command is not local to sendCommand
-    this.result = null; // no answer yet, this.result is not local to sendCommand
+    amoCommand = new AMOCommand(command, this.address(), sequenceNum); // store the command, this.command is not local to sendCommand
+    result = null; // no answer yet
 
-    send(new Request(command, sequenceNum), serverAddress); // send the request to the server
+    send(new Request(amoCommand), serverAddress); // send the request to the server
     set(new ClientTimer(sequenceNum), ClientTimer.CLIENT_RETRY_MILLIS); // set 100ms timer, if no reply, then retry
   }
 
@@ -70,8 +74,8 @@ class SimpleClient extends Node implements Client {
    * ---------------------------------------------------------------------------------------------*/
   private synchronized void handleReply(Reply m, Address sender) {
     // Your code here...
-    if (m.sequenceNum() == sequenceNum) { // only accept this response if it's for the current request
-      result = m.result(); // store the result
+    if (m.result().sequenceNum() == sequenceNum) { // only accept this response if it's for the current request
+      result = m.result().result(); // store the result unwrapping the AMOResult
       notify(); // wake up getResult() which is waiting on this.result
     }
   }
@@ -82,7 +86,7 @@ class SimpleClient extends Node implements Client {
   private synchronized void onClientTimer(ClientTimer t) {
     // Your code here...
     if (t.sequenceNum() == sequenceNum && result == null) { // only retry if this timer is for our current request and we still don't have a response. If already got the response, then do nothing (Resend/Discard Pattern).
-      send(new Request(command, sequenceNum), serverAddress); // resend request to server
+      send(new Request(amoCommand), serverAddress); // resend request to server
       set(new ClientTimer(sequenceNum), ClientTimer.CLIENT_RETRY_MILLIS); // set 100ms timer, if no reply, then retry
     }
   }

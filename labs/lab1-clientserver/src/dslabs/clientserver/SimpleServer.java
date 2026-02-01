@@ -6,6 +6,9 @@ import dslabs.framework.Node;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
+// additional imports by me
+import dslabs.atmostonce.AMOApplication;
+
 /**
  * Simple server that receives requests and returns responses.
  *
@@ -15,7 +18,7 @@ import lombok.ToString;
 @EqualsAndHashCode(callSuper = true)
 class SimpleServer extends Node {
   // Your code here...
-  private final Application app; // pretend this is `struct SimpleServer { app: Application }` owned and immutable
+  private final AMOApplication<Application> app; // pretend this is `struct SimpleServer { app: AMOApplication<Application> }` owned and immutable
 
   /* -----------------------------------------------------------------------------------------------
    *  Construction and Initialization
@@ -24,7 +27,7 @@ class SimpleServer extends Node {
     super(address);
 
     // Your code here...
-    this.app = app; // pretend this transfers the ownership of app into the SimpleServer struct
+    this.app = new AMOApplication<>(app); // pretend this transfers the ownership of app into the SimpleServer struct
   }
 
   @Override
@@ -37,6 +40,6 @@ class SimpleServer extends Node {
    * ---------------------------------------------------------------------------------------------*/
   private void handleRequest(Request m, Address sender) {
     // Your code here...
-    send(new Reply(app.execute(m.command()), m.sequenceNum()), sender);
+    send(new Reply(app.execute(m.command())), sender);
   }
 }
