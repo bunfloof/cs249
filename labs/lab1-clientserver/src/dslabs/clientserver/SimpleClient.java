@@ -19,6 +19,10 @@ class SimpleClient extends Node implements Client {
   private final Address serverAddress;
 
   // Your code here...
+  // Java likes to be verbose with private
+  private int sequenceNum; // pretend that this is a signed int32 that starts at 0 by default
+  private Command command; // pretend this is Option<Command> but Java lets this blow up with NullPointerException 
+  private Result result; // pretend this is Option<Result> but Java lets this blow up with NullPointerException
 
   /* -----------------------------------------------------------------------------------------------
    *  Construction and Initialization
@@ -39,18 +43,26 @@ class SimpleClient extends Node implements Client {
   @Override
   public synchronized void sendCommand(Command command) {
     // Your code here...
+    sequenceNum++; // new request, so increment sequence number
+    this.command = command; // store the command, this.command is not local to sendCommand
+    this.result = null; // no answer yet, this.result is not local to sendCommand
+
+    send(new Request(command, sequenceNum), serverAddress); // send the request to the server
+    set(new ClientTimer(sequenceNum), ClientTimer.CLIENT_RETRY_MILLIS); // set 100ms timer, if no reply, then retry
   }
 
   @Override
   public synchronized boolean hasResult() {
     // Your code here...
+    if (this.result != null) return true;
     return false;
   }
 
   @Override
   public synchronized Result getResult() throws InterruptedException {
     // Your code here...
-    return null;
+    while (result == null) wait(); // if we don't have an response yet, sleep until handleReply wakes us up with notify()
+    return result;
   }
 
   /* -----------------------------------------------------------------------------------------------
@@ -58,6 +70,10 @@ class SimpleClient extends Node implements Client {
    * ---------------------------------------------------------------------------------------------*/
   private synchronized void handleReply(Reply m, Address sender) {
     // Your code here...
+    if (m.sequenceNum() == sequenceNum) { // only accept this response if it's for the current request
+      result = m.result(); // store the result
+      notify(); // wake up getResult() which is waiting on this.result
+    }
   }
 
   /* -----------------------------------------------------------------------------------------------
@@ -65,5 +81,9 @@ class SimpleClient extends Node implements Client {
    * ---------------------------------------------------------------------------------------------*/
   private synchronized void onClientTimer(ClientTimer t) {
     // Your code here...
+    if (t.sequenceNum() == sequenceNum && result == null) { // only retry if this timer is for our current request and we still don't have a response. If already got the response, then do nothing (Resend/Discard Pattern).
+      send(new Request(command, sequenceNum), serverAddress); // resend request to server
+      set(new ClientTimer(sequenceNum), ClientTimer.CLIENT_RETRY_MILLIS); // set 100ms timer, if no reply, then retry
+    }
   }
 }

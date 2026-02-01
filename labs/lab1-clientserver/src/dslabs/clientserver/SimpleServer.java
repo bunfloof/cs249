@@ -15,6 +15,7 @@ import lombok.ToString;
 @EqualsAndHashCode(callSuper = true)
 class SimpleServer extends Node {
   // Your code here...
+  private final Application app; // pretend this is `struct SimpleServer { app: Application }` owned and immutable
 
   /* -----------------------------------------------------------------------------------------------
    *  Construction and Initialization
@@ -23,6 +24,7 @@ class SimpleServer extends Node {
     super(address);
 
     // Your code here...
+    this.app = app; // pretend this transfers the ownership of app into the SimpleServer struct
   }
 
   @Override
@@ -35,5 +37,6 @@ class SimpleServer extends Node {
    * ---------------------------------------------------------------------------------------------*/
   private void handleRequest(Request m, Address sender) {
     // Your code here...
+    send(new Reply(app.execute(m.command()), m.sequenceNum()), sender);
   }
 }
