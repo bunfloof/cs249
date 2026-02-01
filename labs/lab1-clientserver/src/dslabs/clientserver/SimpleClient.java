@@ -74,7 +74,7 @@ class SimpleClient extends Node implements Client {
    * ---------------------------------------------------------------------------------------------*/
   private synchronized void handleReply(Reply m, Address sender) {
     // Your code here...
-    if (m.sequenceNum() == sequenceNum) { // only accept this response if it's for the current request
+    if (m.result().sequenceNum() == sequenceNum) { // only accept this response if it's for the current request
       result = m.result().result(); // store the result unwrap
       notify(); // wake up getResult() which is waiting on this.result
     }
