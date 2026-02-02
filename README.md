@@ -1,4 +1,9 @@
-# Distributed Systems Labs
+
+## Tom Trinh
+
+```sh
+make clean && make
+```
 
 1. [Introduction](#introduction)
 2. [Getting Started](#getting-started)
